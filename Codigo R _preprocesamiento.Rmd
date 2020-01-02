@@ -1,0 +1,322 @@
+---
+title: "PEC2: Proyecto de visualización de datos: Familiarízate con los datos"
+author: "Elena Ruiz Martinez"
+date: "20 de Noviembre de 2019"
+output:
+  html_document:
+    toc: yes
+    number_sections: yes
+    toc_depth: 2
+    toc_float: true 
+  pdf_document:
+    toc: yes
+    number_sections: yes
+
+lang: es    # speak language: ca is catalan, es is spanish
+
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load_libraries, include=FALSE}
+library(knitr)
+library(dplyr)
+library (ggplot2)
+```
+
+# Carga de los archivos de datos  
+```{r lectura1}
+
+# Leemos y cargamos los datos
+myfile <- "athlete_events.csv" 
+mydata <- read.csv(myfile,  stringsAsFactors = FALSE)
+
+# Verificamos la estructura del juego de datos 
+str(mydata)
+
+```
+
+Para obtener también los paises, combinaremos este conjunto de datos con el archivo "noc_regions.csv", donde tenemos las relaciones entre código NOC y país correspondiente.  
+
+```{r lectura2}
+
+# Leemos y cargamos los datos
+data_country <- read.csv("noc_regions.csv", stringsAsFactors = FALSE)
+
+# Verificamos la estructura del juego de datos 
+str(data_country)
+
+# Combinamos los dos datasets por el campo NOC
+data_olimpiadas<-merge (mydata, data_country, all.x = TRUE)
+
+# Verificamos la estructura del juego de datos 
+str(data_olimpiadas)
+```
+# Asignar a cada variable el tipo de variable  
+Por defecto al leer los ficheros con la función read.csv() se les asigna un tipo a cada variable, pero hay algunas variables que no tienen el tipo correcto, estas variables son: ID, Sex, Height y Season.  
+
+```{r chunck1.0}
+
+data_olimpiadas$ID<- as.character(data_olimpiadas$ID)
+data_olimpiadas$Sex<- as.factor(data_olimpiadas$Sex)
+data_olimpiadas$Height<- as.double(data_olimpiadas$Height)
+data_olimpiadas$Season<- as.factor(data_olimpiadas$Season)
+data_olimpiadas$Medal<- as.factor(data_olimpiadas$Medal)
+
+str(data_olimpiadas)
+```
+# Analizar valores vacios  
+
+```{r chunck1.1}
+
+# Se revisa si existen atributos con valores vacíos: NA
+colSums(is.na(data_olimpiadas))
+
+# Se revisa si existen atributos con valores vacíos: cadena vacía
+colSums(data_olimpiadas=="")
+
+```
+
+- Tenemos valores vacios para **Age**, **Height** y **Weight**, no se han registrado esos datos para una serie de atletas.  
+
+- Tenemos valores vacios para **Medal** ,pero eso tiene lógica, ya que en el caso de que no se haya ganado ninguna medalla el campo queda vacio.  
+
+- Tenenos valores vacíos para **notes**, lógico ya que este campo solo se comenta en casos puntuales.  
+
+- Tenemos valores vacios para **region**, este caso es algo más raro, ya que al ir relacionado con el campo NOC, el cual no tiene ningún valor vacío, en consecuencia region tampoco debería tener ningún valor vacio. Investiguemos que atletas tienen el campo región vacio:  
+
+
+```{r chunck1.2}
+
+# Buscamos las fila con que tienen el atributo region vacío.
+kk <- which(is.na(data_olimpiadas$region))
+
+# De las filas con el campo region vacio, que valor tienen en el campo NOC?
+kable(unique((data_olimpiadas[kk,])$NOC))
+        
+```
+
+Los atletas con NOC igual a ROT, SGP, TUV o UNK tienen el campo "region"" vacio. Investigaremos por que sucede esto y si fuera necesario modificaremos el valor de este campo.
+
+**NOC="ROT"**  
+```{r chunck1.3}
+
+# Buscamos las filas con el campo region vacio y el campo NOC="ROT"
+kk_ROT<-which(is.na(data_olimpiadas$region) & (data_olimpiadas$NOC=="ROT"))
+kable(data_olimpiadas[kk_ROT,])    
+```
+
+Vemos que corresponden a Atletas Olimpicos Refugiados, por eso tienen el campo region vacío. Dejaremos este campo vacio.
+
+**NOC="SGP"**  
+```{r chunck1.4}
+# Buscamos las filas con el campo region vacio y el campo NOC="SGP"
+kk_SGP<-which(is.na(data_olimpiadas$region) & (data_olimpiadas$NOC=="SGP"))
+kable(head(data_olimpiadas[kk_SGP,],10))      
+
+```
+
+Vemos que corresponden a atletas de equipos de Singapore y que no se les ha asigando ningún pais, seguramente haya alguna incoherencia entre el NOC y la region en nuestra tabla de regiones. Accederemos al archivo "noc_regions.csv" para ver si existe el NOC="SGP".
+
+```{r chunck1.4.1}
+kable(data_country[which(data_country$NOC=="SGP"),])
+
+# No aparece en la tabla de regiones, veamos ahora si la region="Singapore" y a qué NOC se la ha asignado.
+kable(data_country[which(data_country$region=="Singapore"),])
+
+# Como ya preveíamos, tenemos un NOC diferente para la región Singapore en el archivo "athlete_events.csv" (NOC="SGP") y en el "noc_regions.csv" (NOC="SIN"), así que lo que haremos será asignar a todos los NOC="SGP" la región de "Singapore"
+data_olimpiadas[kk_SGP,"region"]<-"Singapore"
+
+```
+
+**NOC="TUV"**  
+```{r chunck1.5}
+
+# Buscamos las filas con el campo region vacio y el campo NOC="TUV"
+kk_TUV<-which(is.na(data_olimpiadas$region) & (data_olimpiadas$NOC=="TUV"))
+kable(data_olimpiadas[kk_TUV,]   )
+
+# También buscamos en la tabla de regiones
+kable(data_country[which(data_country$NOC=="TUV"),])
+```
+
+En la tabla de regiones vemos que Tuvalu tiene el campo región vacio. Si nos informamos podremos saber que Tuvalu es uno de los 4 países que forman la polinesia. Por lo tanto el campo region lo rellenaremos con el país Tuvalu.
+
+```{r chunck1.5.1}
+
+data_olimpiadas[kk_TUV,"region"]<-'Tuvalu'
+```
+
+**NOC="UNK"**  
+```{r chunck1.6}
+
+# Buscamos las filas con el campo region vacio y el campo NOC="UNK"
+kk_UNK<-which(is.na(data_olimpiadas$region) & (data_olimpiadas$NOC=="UNK"))
+kable(data_olimpiadas[kk_UNK,]  )
+
+# También buscamos en la tabla de regiones
+kable(data_country[which(data_country$NOC=="UNK"),])
+
+```
+
+Entendemos que el valor UNK para NOC, hace referencia a que se desconoce la región de la que proviene y por lo tanto el NOC al que pertenece, en este caso dejaremos el campo NOC con ese valor.
+
+# Creamos el archivo limpio
+
+```{r chunck1.7, eval=FALSE}
+
+# Creamos un nuevo archivo con las modificaciones hechas
+my.newfile <- "historia_olimpiadas.csv"
+write.csv(data_olimpiadas, file=my.newfile, row.names = FALSE)
+```
+
+
+# Exploramos los datos
+
+Veamos cuantos valores únicos tenemos de cada atríbuto.
+
+```{r chunck1.8}
+# ID's únicas
+length(unique(data_olimpiadas$ID))
+
+# Name's únicos
+length(unique(data_olimpiadas$Name))
+
+# Team's únicos
+length(unique(data_olimpiadas$Team))
+
+# NOC's únicos
+length(unique(data_olimpiadas$NOC))
+
+# Games's únicos
+length(unique(data_olimpiadas$Games))
+
+# Year's únicos
+length(unique(data_olimpiadas$Year))
+
+# City's únicos
+length(unique(data_olimpiadas$City))
+
+# Sport's únicos
+length(unique(data_olimpiadas$Sport))
+
+# Event's únicos
+length(unique(data_olimpiadas$Event))
+
+# region's únicos
+length(unique(data_olimpiadas$region))
+
+```
+
+Creamos un boxplot para cada una de las variables cuantitativas: Age, Weight y Height para detectar posibles valores atípicos.
+
+```{r chunck1.9}
+
+# BoxPlot para la variable "Age"
+
+media_age<-round(mean(data_olimpiadas$Age,na.rm = TRUE))
+max_age<-max(data_olimpiadas$Age,na.rm = TRUE)
+min_age<-min(data_olimpiadas$Age,na.rm = TRUE)
+
+boxplot(data_olimpiadas$Age, main="Age",col="blue")
+points(x = 1, y = media_age, pch =16, col="red") 
+text(1.3, media_age+8, labels = c(paste("edad media", media_age, sep = "=")),col = "red")
+
+points(x = 1, y = max_age, pch =16, col="#009999") 
+text(1.3, max_age, labels = c(paste("edad máxima", max_age, sep = "=")),col="#009999")
+
+points(x = 1, y = min_age, pch =16, col="#FF9900") 
+text(1.3, min_age, labels = c(paste("edad mínima", min_age, sep = "=")),col="#FF9900")
+```
+
+```{r chunck1.10}
+# Participante más joven:
+joven<-which(data_olimpiadas$Age==min_age)
+kable(data_olimpiadas[joven,] )
+
+# Participante más viejo:
+viejo<-which(data_olimpiadas$Age==max_age)
+kable(data_olimpiadas[viejo,] )
+```
+
+
+
+
+
+```{r chunck1.11}
+# BoxPlot para la variable "Weight"
+
+media_Weight<-round(mean(data_olimpiadas$Weight,na.rm = TRUE),1)
+max_Weight<-max(data_olimpiadas$Weight,na.rm = TRUE)
+min_Weight<-min(data_olimpiadas$Weight,na.rm = TRUE)
+
+boxplot(data_olimpiadas$Weight, main="Weight",col="blue")
+
+points(x = 1, y = media_Weight, pch =16, col="red") 
+text(1.3, media_Weight+20, labels = c(paste("peso medio", media_Weight, sep = "=")),col = "red")
+
+points(x = 1, y = max_Weight, pch =16, col="#009999") 
+text(1.3, max_Weight, labels = c(paste("máximo peso", max_Weight, sep = "=")),col="#009999")
+
+points(x = 1, y = min_Weight, pch =16, col="#FF9900") 
+text(1.3, min_Weight, labels = c(paste("mínimo peso", min_Weight, sep = "=")),col="#FF9900")
+```
+```{r chunck1.12}
+# Participante con más peso:
+pesado<-which(data_olimpiadas$Weight==min_Weight)
+kable(data_olimpiadas[pesado,])
+
+# Participante con menos peso:
+ligero<-which(data_olimpiadas$Weight==max_Weight)
+kable(data_olimpiadas[ligero,] )
+
+```
+
+
+
+```{r chunck1.13}
+# BoxPlot para la variable "Height"
+
+media_Height<-round(mean(data_olimpiadas$Height,na.rm = TRUE),1)
+max_Height<-max(data_olimpiadas$Height,na.rm = TRUE)
+min_Height<-min(data_olimpiadas$Height,na.rm = TRUE)
+
+boxplot(data_olimpiadas$Height, main="Height",col="blue")
+
+points(x = 1, y = media_Height, pch =16, col="red") 
+text(1.3, media_Height+13, labels = c(paste("altura media", media_Height, sep = "=")),col = "red")
+
+points(x = 1, y = max_Height, pch =16, col="#009999") 
+text(1.3, max_Height, labels = c(paste("máxima altura", max_Height, sep = "=")),col="#009999")
+
+points(x = 1, y = min_Height, pch =16, col="#FF9900") 
+text(1.3, min_Height, labels = c(paste("mínima altura", min_Height, sep = "=")),col="#FF9900")
+```
+
+
+**Atletas por sexo**  
+
+```{r chunck1.14}
+
+# Calculamos el número de atletas identificando las ID únicas
+atletas<-unique(data_olimpiadas$ID)
+
+print(paste("El número total de atletas es de:", length(atletas)))
+
+# Agrupamos el dataset por ID's únicas
+data_ID_unica<-data_olimpiadas %>% group_by(ID) %>% slice(1)
+
+# Número de atletas por sexo
+table(data_ID_unica$Sex)
+
+# Creamos una tabla con la proporción de atletas por sexo
+tab.frecuencia <- as.data.frame(prop.table(table(data_ID_unica$Sex))*100)
+colnames(tab.frecuencia) <- c("Sexo", "Porcentaje")
+
+# Graficamos el porcentaje de hombres y mujeres
+ggplot(tab.frecuencia, aes(x=Sexo, y=Porcentaje, fill = Sexo, label=paste(round(Porcentaje),"%"))) +   geom_bar(stat="identity", width=0.5)+ geom_text(position="stack",aes(ymax=1),vjust=5) + scale_fill_manual(values = c("red", "blue"))+ ggtitle("Porcentaje de atletas por sexo") + 
+ylab("% de atletas")+ theme_bw()+ theme(legend.position = "none")
+```
