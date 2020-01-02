@@ -1,7 +1,6 @@
 # Visualización de datos
 
-### TÍTULO: 
-#### ¿Qué países ganan más medallas en los Juegos Olímpicos?
+### TÍTULO: ¿Qué países ganan más medallas en los Juegos Olímpicos?
 
 ### URL: https://public.tableau.com/profile/elena7848#!/vizhome/QupasesgananmsmedallasenlosJuegosOlmpicos/Historia1?publish=yes
 
