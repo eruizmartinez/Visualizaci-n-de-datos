@@ -10,8 +10,8 @@ A partir de un conjunto de datos históricos de los Juegos Olímpicos (desde Ate
 
 ## DESCRIPCIÓN DE LOS FICHEROS
 * **dataset_inicial.zip**: Contiene los archivos:
-    - athlete_events.csv: archivo .csv que contiene los diferentes registros correspondiente a los atletas que compiten en un evento olímpico.
-    - noc_regions.csv: archivo .csv que contiene el nombre de los diferentes NOCs (Comité Olímpico Nacional ) y el país al que pertenecen.
+    - **athlete_events.csv**: archivo .csv que contiene los diferentes registros correspondiente a los atletas que compiten en un evento olímpico.
+    - **noc_regions.csv**: archivo .csv que contiene el nombre de los diferentes NOCs (Comité Olímpico Nacional ) y el país al que pertenecen.
 * **dataset_final.zip**: Contiene el dataset final (al que llamaremos **historia_olimpiadas.csv**)después de unificar los dos archivos: "athlete_events.csv" y "noc_regions.csv", limpiarlo de posibles inconsistencias y prepararlo para su posterior análisis.
 * **POBLACION MUNDIAL.xlsx**: Fichero excel que contiene la población de cada uno de los países.
 * **Codigo R_preprocesamiento.Rmd**: 
